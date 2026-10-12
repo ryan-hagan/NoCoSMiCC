@@ -9,7 +9,7 @@
 
 *Identifying non-coding driver mutations in colorectal cancer using 5,000+ whole genomes and colon epithelial-specific regulatory elements*
 
-[Publication](#) • [Documentation](#) • [Data Access](#data-access)
+[Publication](#)
 
 </div>
 
@@ -17,54 +17,31 @@
 
 ## 🔬 Overview
 
-NoCoSMiCC aims to identify non-coding somatic driver mutations in colorectal cancer (CRC) by integrating multi-modal regulatory genomics data with large-scale whole genome sequencing [web:1][web:26]. This pipeline generates candidate cis-regulatory elements (cCREs) in colon epithelial cells and facilitates the integration of somatic mutations 
-**Key Features:**
-- 🎯 Tissue-specific regulatory element identification from scATAC-seq, and histone/TF ChIP-seq
-- 🧪 Integration of data from ENCODE and HuBMAP
-- Generation of a candidate cis-regulatory element map in colon epithelial cells
-- 📊 Evolutionary conservation and synteny analysis across 241 mammals
-- 🏗️ TF motif disruption and chromatin contacts
-- 🔍 Analysis of somatic mutations in >5,000 CRC whole genomes across five independent cohorts
+NoCoSMiCC aims to identify non-coding somatic driver mutations in colorectal cancer (CRC) by integrating multi-modal regulatory genomics data with large-scale whole genome sequencing. This repository outlines the pipeline to generate candidate colon epithelial cis-regulatory elements (cCREs) and facilitates their annotation with evolutionary sequence conservation and synteny.
+
+**What does NoCoSMiCC involve?:**
+- :dart: Tissue-specific regulatory element identification from scATAC-seq, and histone/TF ChIP-seq
+- :link: Integration of data from ENCODE and HuBMAP
+- :world_map: Generation of a candidate cis-regulatory element map in colon epithelial cells
+- :bar_chart: Evolutionary conservation and synteny analysis across 241 mammals
+- :jigsaw: TF motif disruption and chromatin contacts
+- :mag: Analysis of somatic mutations in >5,000 CRC whole genomes across five independent cohorts
 
 ## 📊 Citation
 
 If you use NoCoSMiCC in your research, please cite:
 
 @article{nocosmcc2026,
-title={Non-Coding Somatic Mutations in Colorectal Cancer},
+title={A colon epithelial regulatory atlas reveals candidate non-coding somatic drivers across 5224 colorectal cancer genomes},
 author={Hagan et al.},
 journal={Journal Name},
-year={2025},
+year={2026},
 doi={pending}
 }
 
-## 🚀 Quick Start
-Clone the repository
-git clone https://github.com/yourusername/NoCoSMiCC.git
-cd NoCoSMiCC
-
-Install dependencies
-conda env create -f environment.yml
-conda activate nocosmicc
-
-Run the cCRE generation pipeline
-./scripts/run_pipeline.sh
-
-### Dependencies
-
 ## Data access
 
-A key component of this project is the construction of colon epithelium-specific 
-regulatory element maps, adapted from the ENCODE cCRE generation pipeline 
-(https://www.encodeproject.org/), using single-cell chromatin accessibility data 
-in addition to histone and transcription factor ChIP-seq.
-
-**Genome build:** [FILL IN: e.g., GRCh38/hg38]
-
-**Reference files required:**
-- Genome FASTA: [FILL IN: source/version]
-- TSS annotation (GTF/BED): [FILL IN: source/version, e.g. GENCODE vX]
-- Blacklist/low-mappability regions: [FILL IN, if used]
+**Genome build:** hg38
 
 The following data types are used to generate colon cCREs:
 - scATAC-seq
@@ -72,17 +49,18 @@ The following data types are used to generate colon cCREs:
 - H3K27ac ChIP-seq
 - CTCF ChIP-seq
 
+Fragment files for scATAC data can be found here and should be downloaded and and placed in the "data" directory:
+
+ENCODE: 
+
+HuBMAP: 
+
 ## Running the cCRE generation pipeline
 
-### Step 1: Generate peaks from scATAC-seq data
-Fragment files are obtained for each sample and used to create arrow files for an 
-ArchR project. Quality control removes low-quality cells (e.g., doublets, cells 
-with low TSS enrichment and/or low fragment counts). Accessibility around marker 
-genes is used to select epithelial cell populations for peak calling; a peak file 
-and bigWig file are exported per sample.
+### Step 1: Generate consensus peaks from scATAC-seq data
 
 ```bash
-./1_Process-sc-fragments.R
+Rscript Scripts/1_Process-sc-fragments.R
 ```
 
 ### Step 2: Process single-cell chromatin accessibility peaks
