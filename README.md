@@ -27,17 +27,11 @@ NoCoSMiCC aims to identify non-coding somatic driver mutations in colorectal can
 - :jigsaw: TF motif disruption and chromatin contacts
 - :mag: Analysis of somatic mutations in >5,000 CRC whole genomes across five independent cohorts
 
-## 📊 Citation
+## 📝 Citation
 
 If you use NoCoSMiCC in your research, please cite:
 
-@article{nocosmcc2026,
-title={A colon epithelial regulatory atlas reveals candidate non-coding somatic drivers across 5224 colorectal cancer genomes},
-author={Hagan et al.},
-journal={Journal Name},
-year={2026},
-doi={pending}
-}
+> Hagan R, *et al.* A colon epithelial regulatory atlas reveals candidate non-coding somatic drivers across 5224 colorectal cancer genomes. *Manuscript under review* (2026).
 
 ## Data access
 
@@ -49,18 +43,18 @@ The following data types are used to generate colon cCREs:
 - H3K27ac ChIP-seq
 - CTCF ChIP-seq
 
-Fragment files for scATAC data can be found here and should be downloaded and and placed in the "data" directory:
+Fragment files for the scATAC-seq data are available from ENCODE and HuBMAP. The sample identifiers used in this study are listed in [`Files/encode-scATAC-samples.txt`](Files/encode-scATAC-samples.txt) and [`Files/hubmap-scATAC-samples.txt`](Files/hubmap-scATAC-samples.txt). Downloaded fragment files should be placed in the `data/` directory.
 
-ENCODE: 
+**ENCODE:** available: https://www.encodeproject.org/
 
-HuBMAP: 
+**HuBMAP:** available from Dryad, doi:[10.5061/dryad.0zpc8672f](https://doi.org/10.5061/dryad.0zpc8672f).
 
 ## Running the cCRE generation pipeline
 
 ### Step 1: Generate consensus peaks from scATAC-seq data
 
 ```bash
-Rscript Scripts/1_Process-sc-fragments.R
+Rscript Scripts/0_ArchR_Analysis.R
 ```
 
 ### Step 2: Process single-cell chromatin accessibility peaks
