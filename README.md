@@ -37,13 +37,13 @@ If you use NoCoSMiCC in your research, please cite:
 
 **Genome build:** hg38
 
-The following data types are used to generate colon cCREs:
+The following data types are used to generate colon epithelial cCREs:
 - scATAC-seq
 - H3K4me3 ChIP-seq
 - H3K27ac ChIP-seq
 - CTCF ChIP-seq
 
-Fragment files for the scATAC-seq data are available from ENCODE and HuBMAP. The sample identifiers used in this study are listed in [`Files/encode-scATAC-samples.txt`](Files/encode-scATAC-samples.txt) and [`Files/hubmap-scATAC-samples.txt`](Files/hubmap-scATAC-samples.txt). Downloaded fragment files should be placed in the `data/` directory.
+Fragment files for the scATAC-seq data are available from ENCODE and HuBMAP. The sample identifiers used in this study are listed in [`Files/encode-scATAC-samples.txt`](Files/encode-scATAC-samples.txt) and [`Files/hubmap-scATAC-samples.txt`](Files/hubmap-scATAC-samples.txt). Downloaded fragment files should be placed in the `data/scATAC` directory.
 
 **ENCODE:** available: https://www.encodeproject.org/
 
