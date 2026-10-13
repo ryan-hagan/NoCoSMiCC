@@ -1,6 +1,3 @@
-CombinedEpiProj <- loadArchRProject("/mnt/tier2/project/p201120/ryan/cCRE_pipeline/ArchR_Epithelial_Combined/")
-saveArchRProject(CombinedEpiProj)
-
 #### Script 1 - ArchR_Analysis.R ####
 
 # Script for ArchR project creation, identification of epithelial cells and peak calling using ENCODE and HuBMAP colon scATAC datasets
@@ -9,7 +6,7 @@ saveArchRProject(CombinedEpiProj)
 #######################################
 # Setup
 #######################################
-# Load packages
+# load packages
 library(ArchR)
 library(Seurat)
 library(BSgenome.Hsapiens.UCSC.hg38)
@@ -17,24 +14,40 @@ library(pheatmap)
 library(cowplot)
 library(dplyr)
 library(ggplot2)
-#library(parallel)
+library(tibble)
+library(FNN)
+library(rtracklayer)
 
 # set seed for reproducibility
 set.seed(1)
 
+# set genome and threads
 addArchRGenome("hg38")
-addArchRThreads(threads = 64)
+addArchRThreads(threads = 64) # adjust the number of cores
 
-# Set working directory
-setwd("/project/home/p201120/ryan/cCRE_pipeline/")
+# set working directory (base directory should be set to where the NoCoSMiCC repo was cloned to)
+base_dir <- "."
+setwd(base_dir)
+
+# set the path to Macs2 for peak calling
+pathToMacs2 <- Sys.which("macs2")
+# pathToMacs2 <- "/path/to/your/macs2"
 
 # Define arrow/frag file directories
-arrowdir <- "/project/home/p201120/ryan/cCRE_pipeline/outputs/ArrowFiles/"
-fragDir <- "/project/home/p201120/ryan/cCRE_pipeline/files/scATAC/"
+arrowdir <- file.path(base_dir, "data/ArrowFiles")
+fragDir  <- file.path(base_dir, "data/scATAC")
 
 #######################################
 # Define paths to fragment files and nFrags thresholds
 #######################################
+
+# ENCODE samples
+ENCODE_frags <- c(
+  "ENCSR916RYB" = 1000, "ENCSR904WIW" = 1000, "ENCSR830FPR" = 1000,
+  "ENCSR997YNO" = 2000, "ENCSR007QIO" = 2000, "ENCSR349XKD" = 2000,
+  "ENCSR434SXE" = 2000, "ENCSR388NCA" = 2000, "ENCSR506YMX" = 2000,
+  "ENCSR367GKP" = 2000
+)
 
 # HuBMAP samples
 HuBMAP_frags <- c(
@@ -66,21 +79,13 @@ HuBMAP_frags <- c(
   "B012-A-201" = 6000
 )
 
-# ENCODE samples
-ENCODE_frags <- c(
-  "ENCSR916RYB" = 1000, "ENCSR904WIW" = 1000, "ENCSR830FPR" = 1000,
-  "ENCSR997YNO" = 2000, "ENCSR007QIO" = 2000, "ENCSR349XKD" = 2000,
-  "ENCSR434SXE" = 2000, "ENCSR388NCA" = 2000, "ENCSR506YMX" = 2000,
-  "ENCSR367GKP" = 2000
-)
-
-# Define fragment file paths
+# define fragment file paths
 HuBMAP_inputFiles <- setNames(
-  paste0(fragDir, names(HuBMAP_frags), "_atac_fragments.tsv.gz"),
+  file.path(fragDir, paste0(names(HuBMAP_frags), "_atac_fragments.tsv.gz")),
   names(HuBMAP_frags)
 )
 ENCODE_inputFiles <- setNames(
-  paste0(fragDir, names(ENCODE_frags), ".fragments.tsv.gz"),
+  file.path(fragDir, paste0(names(ENCODE_frags), ".fragments.tsv.gz")),
   names(ENCODE_frags)
 )
 
@@ -89,6 +94,8 @@ all_frags <- c(HuBMAP_inputFiles, ENCODE_inputFiles)
 #######################################
 # Create arrow files
 #######################################
+
+dir.create(arrowdir, recursive = TRUE, showWarnings = FALSE)
 
 all_thresholds <- unique(c(HuBMAP_frags, ENCODE_frags))
 
@@ -106,6 +113,7 @@ for(threshold in sort(all_thresholds)) {
   createArrowFiles(
     inputFiles  = inputFiles,
     sampleNames = names(inputFiles),
+    outputNames = file.path(arrowdir, names(inputFiles)),
     minFrags    = threshold,
     minTSS      = 5,
     addTileMat  = TRUE,
@@ -115,22 +123,21 @@ for(threshold in sort(all_thresholds)) {
 }
 
 #######################################
-# Compute doublet scores for ENCODE samples
+# Calculate doublet scores for ENCODE samples
 #######################################
 
-ENCODE_Arrows <- paste0(arrowdir, "/", names(ENCODE_frags), ".arrow")
+ENCODE_Arrows <- file.path(arrowdir, paste0(names(ENCODE_frags), ".arrow"))
 names(ENCODE_Arrows) <- names(ENCODE_frags)
 
 doubletScores <- addDoubletScores(ENCODE_Arrows, k = 10, knnMethod = "UMAP", LSIMethod = 1, threads = 1)
 
 #######################################
-# Create ArchR project for ENCODE samples
+# Create an ArchR project for ENCODE samples
 #######################################
 
 ENCODEproj <- ArchRProject(
-  ArrowFiles        = ENCODE_Arrows,
-  outputDirectory   = "/project/home/p201120/ryan/cCRE_pipeline/files/scATAC/ArchR_ENCODE"
-)
+  ArrowFiles = ENCODE_Arrows,
+  outputDirectory = "data/ArchR_projects/ArchR_ENCODE")
 
 #######################################
 # Filter doublets
@@ -139,8 +146,9 @@ ENCODEproj <- ArchRProject(
 ENCODEproj <- filterDoublets(ENCODEproj, filterRatio = 1.2)
 
 saveArchRProject(ArchRProj = ENCODEproj, 
-                 outputDirectory = "/project/home/p201120/ryan/cCRE_pipeline/files/scATAC/ArchR_ENCODE")
-#ENCODEproj <- loadArchRProject("/project/home/p201120/ryan/cCRE_pipeline/files/scATAC/ArchR_ENCODE/")
+                 outputDirectory = file.path(base_dir, "outputs/ArchR_projects/ArchR_ENCODE"))
+#ENCODEproj <- loadArchRProject(file.path(base_dir,"outputs/ArchR_projects/ArchR_ENCODE"))
+
 #######################################
 # Plot quality control metrics
 #######################################
@@ -174,7 +182,7 @@ plotPDF(p1, p2,
 # Dim reduction, clustering and epithelial cluster identification
 #######################################
 
-# Define marker genes
+# define marker genes
 markerSets <- list(
   General_Epithelial = c("EPCAM", "KRT8", "KRT18", "KRT19", "CDH1"),
   T_cells = c("CD3D", "CD3E", "CD3G", "CD8A", "CD8B","TBX21", "IL7R", "CD4", "CD2"),
@@ -189,46 +197,48 @@ markerSets <- list(
 allSamples <- unique(ENCODEproj$Sample)
 
 for(sample in allSamples) {
-
+  
   cat("Processing sample:", sample, "\n")
-
-  outDir <- paste0("/project/home/p201120/ryan/cCRE_pipeline/outputs/ArchR_", sample)
+  
+  outDir <- file.path(base_dir, "outputs", paste0("ArchR_", sample))
   dir.create(outDir, showWarnings = FALSE)
-
+  
   sampCells <- getCellNames(ENCODEproj)[ENCODEproj$Sample == sample]
   cat("Total cells:", length(sampCells), "\n")
-
+  
   sampProj <- subsetArchRProject(
     ArchRProj = ENCODEproj,
     cells = sampCells,
     outputDirectory = outDir,
     force = TRUE
   )
-
+  
   sampProj <- addIterativeLSI(
     ArchRProj = sampProj,
     useMatrix = "TileMatrix",
     name = "IterativeLSI",
     iterations = 2,
     clusterParams = list(resolution = c(0.2), 
-    sampleCells = 10000, 
-    n.start = 10),
+                         sampleCells = 10000, 
+                         n.start = 10),
     varFeatures = 25000,
     dimsToUse = 1:30,
+    seed = 1,
     force = TRUE
   )
-
+  
   sampProj <- addClusters(
     input = sampProj,
     reducedDims = "IterativeLSI",
     method = "Seurat",
     name = "Clusters",
     resolution = 0.4,
+    seed = 1,
     force = TRUE
   )
-
+  
   print(table(sampProj$Clusters))
-
+  
   sampProj <- addUMAP(
     ArchRProj = sampProj,
     reducedDims = "IterativeLSI",
@@ -236,9 +246,10 @@ for(sample in allSamples) {
     nNeighbors = 30,
     minDist = 0.5,
     metric = "cosine",
+    seed = 1,
     force = TRUE
   )
-
+  
   # Overview UMAPs
   sample_umap <- plotEmbedding(
     ArchRProj = sampProj,
@@ -246,45 +257,44 @@ for(sample in allSamples) {
     name = "Sample",
     embedding = "UMAP"
   )
-
+  
   cluster_umap <- plotEmbedding(
     ArchRProj = sampProj,
     colorBy = "cellColData",
     name = "Clusters",
     embedding = "UMAP"
   )
-
-  # Read GeneScoreMatrix
+  
+  # read GeneScoreMatrix
   gsMatrix <- getMatrixFromProject(sampProj, useMatrix = "GeneScoreMatrix")
   allMarkers <- unlist(markerSets)
   availMarkers <- allMarkers[allMarkers %in% rowData(gsMatrix)$name]
-
+  
   gsRows <- which(rowData(gsMatrix)$name %in% availMarkers)
   gsMat  <- assay(gsMatrix)[gsRows, ]
   rownames(gsMat) <- rowData(gsMatrix)$name[gsRows]
   rm(gsMatrix); gc()
-
+  
   clusters <- sampProj$Clusters
-
+  
   meanScores <- sapply(sort(unique(clusters)), function(cl) {
     cells <- which(clusters == cl)
     if(length(cells) == 1) gsMat[, cells]
     else rowMeans(gsMat[, cells])
   })
   colnames(meanScores) <- sort(unique(clusters))
-
+  
   # order markers
   orderedGenes <- unlist(markerSets)
   orderedGenes <- orderedGenes[orderedGenes %in% rownames(meanScores)]
-
+  
   heatMatScaled <- t(scale(t(meanScores[orderedGenes, ])))
-  #heatMatScaled[is.nan(heatMatScaled)] <- 0
-
+  
   geneSetAnnot <- data.frame(
     CellType = rep(names(markerSets), lengths(markerSets)),
     row.names = unlist(markerSets)
   )[orderedGenes, , drop = FALSE]
-
+  
   p_heatmap <- pheatmap::pheatmap(
     heatMatScaled,
     annotation_row = geneSetAnnot,
@@ -296,38 +306,38 @@ for(sample in allSamples) {
     main = paste0(sample, " | Gene Activity Scores per Cluster"),
     silent = TRUE
   )
-
-  # Cluster scores table
+  
+  # cluster scores table
   setScores <- sapply(names(markerSets), function(setName) {
     genes <- markerSets[[setName]][markerSets[[setName]] %in% rownames(gsMat)]
     if(length(genes) == 0) return(rep(NA, ncol(meanScores)))
     if(length(genes) == 1) return(meanScores[genes, ])
     colMeans(meanScores[genes, ])
   })
-
+  
   setScoresDF <- round(as.data.frame(setScores), 3)
   setScoresDF$Cluster <- rownames(setScoresDF)
-
+  
   cat("\nCluster scores for", sample, ":\n")
   print(setScoresDF)
-
-  # Save PDF
+  
+  # save PDF
   pdf(file.path(outDir, paste0("MarkerAnalysis_", sample, ".pdf")),
       width = 15, height = 10)
-
+  
   print(cowplot::plot_grid(
     sample_umap, cluster_umap,
     ncol = 2
   ))
-
+  
   grid::grid.newpage()
   grid::grid.draw(p_heatmap$gtable)
-
+  
   dev.off()
   cat("Saved PDF:", file.path(outDir, paste0("MarkerAnalysis_", sample, ".pdf")), "\n")
-
+  
   saveArchRProject(sampProj)
-
+  
   # tidy
   rm(sampProj, gsMat, meanScores, setScores, setScoresDF,
      p_heatmap, heatMatScaled, geneSetAnnot, orderedGenes)
@@ -354,10 +364,10 @@ for(samp in names(ENCODE_epi_Clusters)) {
   
   cat("\nSubsetting epithelial cells from:", samp, "\n")
   
-  # Load the already-processed sample project
-  sampProj <- loadArchRProject(paste0("ArchR_", samp))
+  # load the already-processed sample project
+  sampProj <- loadArchRProject(file.path(base_dir, "outputs", paste0("ArchR_", samp)))
   
-  # Get cells from epithelial clusters
+  # get cells from epithelial clusters
   epiClusters <- ENCODE_epi_Clusters[[samp]]
   epiCells <- getCellNames(sampProj)[sampProj$Clusters %in% epiClusters]
   
@@ -367,7 +377,7 @@ for(samp in names(ENCODE_epi_Clusters)) {
 
 cat("\nTotal epithelial cells across ENCODE samples:", length(allEpithelialCells), "\n")
 
-# Subset ENCODE project to epithelial cells
+# subset ENCODE project to epithelial cells
 ENCODEProjEpi <- subsetArchRProject(
   ArchRProj = ENCODEproj,
   cells = allEpithelialCells,
@@ -416,8 +426,7 @@ ENCODEProjEpi <- addUMAP(
   force = TRUE
 )
 
-saveArchRProject(ENCODEProjEpi)
-
+# plots
 p1 <- plotEmbedding(
   ArchRProj = ENCODEProjEpi,
   colorBy = "cellColData",
@@ -450,32 +459,32 @@ plotPDF(p1, p2, p3,
 # Create combined epithelial project
 #######################################
 
-# Define HuBMAP arrows
-HuBMAP_Arrows <- paste0(arrowdir, "/", names(HuBMAP_frags), ".arrow")
+# define HuBMAP arrows
+HuBMAP_Arrows <- file.path(arrowdir, paste0(names(HuBMAP_frags), ".arrow"))
 names(HuBMAP_Arrows) <- names(HuBMAP_frags)
 
-# Create combined project
+# create combined project
 CombinedProj <- ArchRProject(
   ArrowFiles = c(ENCODE_Arrows, HuBMAP_Arrows),
   outputDirectory = "ArchR_Epithelial_Combined"
 )
 
-# Read in the cell barcodes from multiome and non-multiome HuBMAP samples
+# read in the cell barcodes from multiome and non-multiome HuBMAP samples
 HuBMAP_multiome_colon_epi_barcodes <- read.table(
-  "/mnt/tier2/project/p201120/ryan/cCRE_pipeline/files/colon_epithelial_peak_matrix_cells.tsv",
+  file.path(base_dir, "files/colon_epithelial_peak_matrix_cells.tsv"),
   header = FALSE,
   stringsAsFactors = FALSE,
   comment.char = ""
 )$V1
 
 HuBMAP_Nonmultiome_colon_epi_barcodes <- read.table(
-  "/mnt/tier2/project/p201120/ryan/cCRE_pipeline/files/non_multiome_colon_epithelial_peak_matrix_cells.tsv",
+  file.path(base_dir, "files/non_multiome_colon_epithelial_peak_matrix_cells.tsv"),
   header = FALSE,
   stringsAsFactors = FALSE,
   comment.char = ""
 )$V1
 
-# Combine HuBMAP multiome and non-multiome epithelial barcodes
+# combine HuBMAP multiome and non-multiome epithelial barcodes
 HuBMAPEpiCells <- union(HuBMAP_multiome_colon_epi_barcodes, HuBMAP_Nonmultiome_colon_epi_barcodes)
 
 # Define all epithelial cells
@@ -489,8 +498,9 @@ CombinedEpiProj <- subsetArchRProject(
   force = TRUE
 )
 
-saveArchRProject(CombinedEpiProj)
-#CombinedEpiProj <- loadArchRProject("/mnt/tier2/project/p201120/ryan/cCRE_pipeline/ArchR_Epithelial_Combined/")
+saveArchRProject(ArchRProj = CombinedEpiProj,
+                 outputDirectory = file.path(base_dir, "outputs/ArchR_projects/ArchR_Epithelial_Combined"))
+#CombinedEpiProj <- loadArchRProject(file.path(base_dir, "outputs/ArchR_projects/ArchR_Epithelial_Combined"))
 
 #######################################
 # Remove samples with < 100 epithelial cells
@@ -500,7 +510,7 @@ table(CombinedEpiProj$Sample)
 
 low_count_samples <- c("B004-A-004", "B005-A-101", "B005-A-201")
 
-# Fetch the cell names to keep
+# get the cell names to keep
 keep_cells <- getCellNames(CombinedEpiProj)[
   !(CombinedEpiProj$Sample %in% low_count_samples)
 ]
@@ -509,7 +519,7 @@ cat("Cells before filtering:", nCells(CombinedEpiProj), "\n")
 cat("Cells to remove:", nCells(CombinedEpiProj) - length(keep_cells), "\n")
 cat("Cells after filtering:", length(keep_cells), "\n")
 
-# Subset project
+# subset project
 CombinedEpiProj <- subsetArchRProject(
   ArchRProj = CombinedEpiProj,
   cells = keep_cells,
@@ -519,7 +529,9 @@ CombinedEpiProj <- subsetArchRProject(
 
 table(CombinedEpiProj$Sample)
 
-saveArchRProject(CombinedEpiProj)
+saveArchRProject(ArchRProj = CombinedEpiProj,
+                 outputDirectory = file.path(base_dir, "outputs/ArchR_projects/ArchR_Epithelial_Combined"))
+#CombinedEpiProj <- loadArchRProject(file.path(base_dir, "outputs/ArchR_projects/ArchR_Epithelial_Combined"))
 
 #######################################
 # Add metadata
@@ -542,10 +554,10 @@ donors <- c(
   "ENCSR506YMX" = "ENCSR506YMX", "ENCSR349XKD" = "ENCSR349XKD"
 )
 
-# Add Donor info to metadata
+# add donor info to metadata
 CombinedEpiProj <- addCellColData(
   ArchRProj = CombinedEpiProj,
-  data      = donor_map[CombinedEpiProj$Sample],
+  data      = donors[CombinedEpiProj$Sample],
   name      = "Donor",
   cells     = getCellNames(CombinedEpiProj),
   force     = TRUE
@@ -596,14 +608,12 @@ CombinedEpiProj <- addUMAP(
   metric = "cosine",
   force = TRUE
 )
-
-saveArchRProject(CombinedEpiProj)
  
 #######################################
 # Plot combined epithelial UMAPs
 #######################################
 
-# Add imputation weights for plotting
+# add imputation weights for plotting
 CombinedEpiProj <- addImputeWeights(ArchRProj = CombinedEpiProj, reducedDims = "Harmony")
  
 p1 <- plotEmbedding(
@@ -634,21 +644,18 @@ plotPDF(p1, p2, p3,
   width = 5, height = 5
 )
 
-saveArchRProject(CombinedEpiProj)
-#CombinedEpiProj <- loadArchRProject("/mnt/tier2/project/p201120/ryan/cCRE_pipeline/outputs/ArrowFiles/ArchR_Epithelial_Combined/")
-
 #######################################
 # Annotate epithelial cell types using published labels
 #######################################
 
-# Read in the previously published HuBMAP labels
+# read in the previously published HuBMAP labels
 multiome_labels <- read.table(
-  "/project/home/p201120/ryan/cCRE_pipeline/files/scATAC_multiome_cell_types_epithelial_colon.tsv",
+  file.path(base_dir, "files/scATAC_multiome_cell_types_epithelial_colon.tsv"),
   header = TRUE, sep = "\t", stringsAsFactors = FALSE, comment.char = ""
 )
 
 nonmultiome_labels <- read.table(
-  "/project/home/p201120/ryan/cCRE_pipeline/files/scATAC_non_multiome_cell_types_epithelial_colon.tsv",
+  file.path(base_dir, "files/scATAC_non_multiome_cell_types_epithelial_colon.tsv"),
   header = TRUE, sep = "\t", stringsAsFactors = FALSE, comment.char = ""
 )
 
@@ -657,7 +664,7 @@ hubmap_labels <- bind_rows(
   nonmultiome_labels |> mutate(Source = "non_multiome")
 ) |> distinct(Cell, .keep_all = TRUE)
 
-# Add published cell labels to the combined project
+# add published cell labels to the combined project
 cell_names <- getCellNames(CombinedEpiProj)
 
 label_map <- tibble(Cell = cell_names) |>
@@ -671,7 +678,7 @@ CombinedEpiProj <- addCellColData(
   force = TRUE
 )
 
-# Extract the Harmony embedding
+# extract the harmony embedding
 harmony_embed <- getEmbedding(
   ArchRProj = CombinedEpiProj,
   embedding = "UMAP_Harmony",
@@ -685,7 +692,6 @@ ref_embed   <- as.matrix(harmony_embed[hubmap_idx, ])
 query_embed <- as.matrix(harmony_embed[encode_idx, ])
 ref_labels  <- CombinedEpiProj$CellType_HuBMAP[hubmap_idx]
 
-library(FNN)
 knn_result <- get.knnx(data = ref_embed, query = query_embed, k = 25)
 
 encode_knn_labels <- apply(knn_result$nn.index, 1, function(idx) {
@@ -698,10 +704,10 @@ encode_knn_confidence <- apply(knn_result$nn.index, 1, function(idx) {
   max(table(neighbour_labels)) / length(neighbour_labels)
 })
 
-all_labels <- CombinedEpiProj$CellType_Published
+all_labels <- CombinedEpiProj$CellType_HuBMAP
 all_labels[encode_idx] <- encode_knn_labels
 
-confidence_all             <- rep(NA_real_, length(cell_names))
+confidence_all <- rep(NA_real_, length(cell_names))
 confidence_all[encode_idx] <- encode_knn_confidence
 
 CombinedEpiProj <- addCellColData(
@@ -730,40 +736,39 @@ cat("\n=== ENCODE confidence summary per label ===\n")
 tibble(label = encode_knn_labels, confidence = encode_knn_confidence) |>
   group_by(label) |>
   summarise(
-    n           = n(),
+    n = n(),
     median_conf = round(median(confidence), 3),
     pct_high    = round(mean(confidence > 0.6) * 100, 1)
   ) |>
   arrange(desc(n)) |>
   print()
 
-# Collapse cell types
+# collapse cell types
 epiCellType_map <- c(
-  "Stem"                = "Stem",
-  "CyclingTA 1"         = "Cycling TA",
-  "CyclingTA 2"         = "Cycling TA",
-  "TA1"                 = "TA1",
-  "TA2"                 = "TA2",
+  "Stem" = "Stem",
+  "CyclingTA 1" = "Cycling TA",
+  "CyclingTA 2" = "Cycling TA",
+  "TA1" = "TA1",
+  "TA2" = "TA2",
   "Immature Enterocytes"= "Immature Enterocytes",
-  "Enterocytes"         = "Enterocytes",
-  "Best4+ Enterocytes"  = "Best4+ Enterocytes",
-  "Immature Goblet"     = "Immature Goblet",
-  "Goblet"              = "Goblet",
-  "Enteroendocrine"     = "Enteroendocrine",
-  "Enterochromaffin"    = "Enteroendocrine",
-  "EnteroendocrineUn"   = "Enteroendocrine",
+  "Enterocytes" = "Enterocytes",
+  "Best4+ Enterocytes" = "Best4+ Enterocytes",
+  "Immature Goblet" = "Immature Goblet",
+  "Goblet" = "Goblet",
+  "Enteroendocrine" = "Enteroendocrine",
+  "Enterochromaffin" = "Enteroendocrine",
+  "EnteroendocrineUn" = "Enteroendocrine",
   "EnteroendocrineUn 1" = "Enteroendocrine",
-  "NEUROG3high"         = "Enteroendocrine",
-  "L Cells"             = "Enteroendocrine",
-  "I Cells"             = "Enteroendocrine",
-  "D Cells"             = "Enteroendocrine",
-  "S Cells"             = "Enteroendocrine",
-  "Mo Cells"            = "Enteroendocrine",
-  "Tuft"                = "Tuft"
+  "NEUROG3high" = "Enteroendocrine",
+  "L Cells" = "Enteroendocrine",
+  "I Cells" = "Enteroendocrine",
+  "D Cells" = "Enteroendocrine",
+  "S Cells" = "Enteroendocrine",
+  "Mo Cells" = "Enteroendocrine",
+  "Tuft" = "Tuft"
 )
 
 epiCellType_labels <- epiCellType_map[CombinedEpiProj$CellTypeKNN]
-#ta_labels[is.na(ta_labels)] <- "Unknown"
 
 CombinedEpiProj <- addCellColData(
   ArchRProj = CombinedEpiProj,
@@ -778,31 +783,31 @@ sort(table(CombinedEpiProj$FinalCellType), decreasing = TRUE)
 
 p_ta <- plotEmbedding(
   ArchRProj = CombinedEpiProj,
-  colorBy   = "cellColData",
-  name      = "FinalCellType",
+  colorBy = "cellColData",
+  name = "FinalCellType",
   embedding = "UMAP_Harmony"
 )
 
 plotPDF(p_ta,
-  name      = "CellType_TA_Split",
-  ArchRProj = CombinedEpiProj,
-  addDOC    = FALSE,
-  width = 6, height = 6
+        name = "CellType_Split",
+        ArchRProj = CombinedEpiProj,
+        addDOC = FALSE,
+        width = 6, height = 6
 )
 
-# Define colour palette for plotting
+# define colour palette for plotting
 cell_type_colours <- c(
-  "Stem"                 = "#E41A1C",  # red 
-  "Cycling TA"           = "#4A90D9",  # mid blue
-  "TA2"                  = "#66C2A5",  # teal-green
-  "TA1"                  = "#A6D854",  # yellow-green
-  "Goblet" = "#FC8D62",  # orange
-  "Immature Goblet"      = "#FFD92F",  # yellow
-  "Best4+ Enterocytes"   = "#8DA0CB",  # muted blue
-  "Immature Enterocytes"      = "#B3B3E6",  # lavender
-  "Enterocytes"          = "#984EA3",  # purple
-  "Enteroendocrine"      = "#00674F",  # dark green
-  "Tuft"                 = "#FF7F00"   # amber
+  "Stem" = "#E41A1C",
+  "Cycling TA" = "#4A90D9",
+  "TA2" = "#66C2A5",
+  "TA1" = "#A6D854",
+  "Goblet" = "#FC8D62",
+  "Immature Goblet" = "#FFD92F",
+  "Best4+ Enterocytes" = "#8DA0CB",
+  "Immature Enterocytes" = "#B3B3E6",
+  "Enterocytes" = "#984EA3",
+  "Enteroendocrine" = "#00674F",
+  "Tuft" = "#FF7F00" 
 )
 
 p_pub <- plotEmbedding(
@@ -827,20 +832,18 @@ p_pub <- p_pub +
     legend.text      = element_text(size = 11),
     legend.key.size  = unit(0.5, "cm"),
     plot.title       = element_blank()
-  ) +
-  guides(colour = guide_legend(
-    override.aes = list(size = 3),   # larger legend points
+  ) + guides(colour = guide_legend(
+    override.aes = list(size = 3),
     ncol = 1
-  )) +
-  labs(
-    x      = "UMAP Dimension 1",
-    y      = "UMAP Dimension 2",
+  )) + labs(
+    x = "UMAP Dimension 1",
+    y = "UMAP Dimension 2",
     colour = "Cell Type"
   )
 
-# Save plot
+# save plot
 ggsave(
-  "CombinedEpi_CellTypeTA_publication.png",
+  file.path(base_dir, "CombinedEpi_CellType_publication.png"),
   plot   = p_pub,
   width  = 7,
   height = 6,
@@ -851,18 +854,18 @@ ggsave(
 # Call peaks
 #######################################
 
-# Remove Tuft cells (low number)
-CombinedEpiProj <- CombinedEpiProj[CombinedEpiProj$CellTypeTA != "Tuft", ]
+# remove tuft cells (due to low number)
+CombinedEpiProj <- CombinedEpiProj[CombinedEpiProj$FinalCellType != "Tuft", ]
 
 CombinedEpiProj <- addGroupCoverages(
   ArchRProj = CombinedEpiProj,
-  groupBy = "CellTypeTA",
+  groupBy = "FinalCellType",
   force = TRUE
 )
-pathToMacs2 <- "/mnt/tier2/project/p201120/ryan/envs/envs/macs2_env/bin/macs2"
+
 CombinedEpiProj <- addReproduciblePeakSet(
   ArchRProj = CombinedEpiProj,
-  groupBy = "CellTypeTA",
+  groupBy = "FinalCellType",
   pathToMacs2 = pathToMacs2,
   maxPeaks = 200000,
   force = TRUE
@@ -870,230 +873,10 @@ CombinedEpiProj <- addReproduciblePeakSet(
 
 CombinedEpiProj <- addPeakMatrix(CombinedEpiProj)
 
-# Get the consensus peaks and export to BED
+# get the consensus peaks and export to BED
 consensus_peaks <- getPeakSet(CombinedEpiProj)
 
-library(rtracklayer)
+dir.create("outputs/Peaks", recursive = TRUE, showWarnings = FALSE)
 export(consensus_peaks, 
-       con = "/mnt/tier2/project/p201120/ryan/cCRE_pipeline/ArchR_Epithelial_Combined/PeakCalls/BED/consensus_peaks.bed",
+       con = file.path(base_dir, "outputs/Peaks/consensus_peaks.bed"),
        format = "BED")
-
-#######################################
-# Non-epithelial peaks for comparison
-#######################################
-
-# Define non-epithelial clusters
-ENCODE_Nonepi_Clusters <-  list(
-  "ENCSR997YNO" = c("C3", "C4", "C5"),
-  "ENCSR830FPR" = c("C5", "C6", "C7", "C8", "C9", "C10", "C11"),
-  "ENCSR349XKD" = c("C4", "C5", "C6"),
-  "ENCSR434SXE" = c("C2", "C3", "C4"),
-  "ENCSR506YMX" = c("C2", "C3", "C4", "C5", "C6"),
-  "ENCSR904WIW" = c("C8", "C9", "C10", "C11", "C12"),
-  "ENCSR916RYB" = c("C1", "C2"),
-  "ENCSR007QIO" = c("C1", "C2", "C3", "C4"),
-  "ENCSR388NCA" = c("C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8"),
-  "ENCSR367GKP" = c("C1", "C2", "C3", "C4", "C5")
-)
-
-NonEpithelialCells <- c()
-
-for(samp in names(ENCODE_Nonepi_Clusters)) {
-  
-  cat("\nSubsetting non-epithelial cells from:", samp, "\n")
-
-  sampProj <- loadArchRProject(paste0("ArchR_", samp))
-  
-  NonepiClusters <- ENCODE_Nonepi_Clusters[[samp]]
-  NonepiCells <- getCellNames(sampProj)[sampProj$Clusters %in% NonepiClusters]
-  
-  cat("Non-Epithelial cells:", length(NonepiCells), "\n")
-  NonEpithelialCells <- c(NonEpithelialCells, NonepiCells)
-}
-
-cat("\nTotal non-epithelial cells across ENCODE samples:", length(NonEpithelialCells), "\n")
-
-# Subset ENCODE project to non-epithelial cells
-ENCODEProjNonEpi <- subsetArchRProject(
-  ArchRProj = ENCODEproj,
-  cells = NonEpithelialCells,
-  outputDirectory = "ArchR_Non_Epithelial_ENCODE",
-  force = TRUE
-)
-
-table(ENCODEProjNonEpi$Sample)
-
-# Non-epithelial cell barcodes from HuBMAP
-HuBMAP_multiome_colon_stromal_barcodes <- read.table(
-  "/mnt/tier2/project/p201120/ryan/cCRE_pipeline/files/stromal_peak_matrix_cells.tsv",
-  header = FALSE,
-  stringsAsFactors = FALSE,
-  comment.char = ""
-)$V1
-
-HuBMAP_Nonmultiome_colon_stromal_barcodes <- read.table(
-  "/mnt/tier2/project/p201120/ryan/cCRE_pipeline/files/non_multiome_stromal_peak_matrix_cells.tsv",
-  header = FALSE,
-  stringsAsFactors = FALSE,
-  comment.char = ""
-)$V1
-
-HuBMAP_multiome_colon_immune_barcodes <- read.table(
-  "/mnt/tier2/project/p201120/ryan/cCRE_pipeline/files/immune_peak_matrix_cells.tsv",
-  header = FALSE,
-  stringsAsFactors = FALSE,
-  comment.char = ""
-)$V1
-
-HuBMAP_Nonmultiome_colon_immune_barcodes <- read.table(
-  "/mnt/tier2/project/p201120/ryan/cCRE_pipeline/files/non_multiome_immune_peak_matrix_cells.tsv",
-  header = FALSE,
-  stringsAsFactors = FALSE,
-  comment.char = ""
-)$V1
-
-# Combine HuBMAP multiome and non-multiome stromal and immune barcodes
-HuBMAPNonEpiCells <- c(
-  HuBMAP_multiome_colon_stromal_barcodes,
-  HuBMAP_Nonmultiome_colon_stromal_barcodes,
-  HuBMAP_multiome_colon_immune_barcodes,
-  HuBMAP_Nonmultiome_colon_immune_barcodes
-)
-
-# Define all epithelial cells
-AllNonEpiCells <- c(getCellNames(ENCODEProjNonEpi), HuBMAPNonEpiCells)
-
-# Check what's available in CombinedProj
-available_cells <- getCellNames(CombinedProj)
-
-# Deduplicate and filter to only valid cells
-AllNonEpiCells_clean <- unique(AllNonEpiCells)
-AllNonEpiCells_valid <- AllNonEpiCells_clean[AllNonEpiCells_clean %in% available_cells]
-
-# Diagnostic — see how many were dropped
-cat("Total NonEpi barcodes:    ", length(AllNonEpiCells_clean), "\n")
-cat("Valid in CombinedProj:    ", length(AllNonEpiCells_valid), "\n")
-cat("Not found (dropped):      ", length(AllNonEpiCells_clean) - length(AllNonEpiCells_valid), "\n")
-
-# Subset with clean cell list
-CombinedNonEpiProj <- subsetArchRProject(
-  ArchRProj     = CombinedProj,
-  cells         = AllNonEpiCells_valid,
-  outputDirectory = "ArchR_Non_Epithelial_Combined",
-  force         = TRUE
-)
-
-getGroupBW(
-  ArchRProj = CombinedNonEpiProj,
-  groupBy = "Sample"
-)
-saveArchRProject(CombinedNonEpiProj)
-
-## Heatmap 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-CombinedEpiProj <- addGroupCoverages(
-  ArchRProj = CombinedEpiProj,
-  groupBy = "CellTypeTA",
-  force = TRUE
-)
-
-pathToMacs2 <- "/mnt/tier2/project/p201120/ryan/envs/envs/macs2_env/bin/macs2"
-CombinedEpiProj <- addReproduciblePeakSet(
-  ArchRProj = CombinedEpiProj,
-  groupBy = "CellTypeTA",
-  pathToMacs2 = pathToMacs2,
-  force = TRUE
-)
-
-# Add peak matrix
-CombinedEpiProj <- addPeakMatrix(CombinedEpiProj)
-
-#######################################
-# Convert .rds to bed
-#######################################
-
-rds_dir <- "/mnt/tier2/project/p201120/ryan/cCRE_pipeline/ArchR_Epithelial_Combined/PeakCalls/CellTypeTA/"
-out_dir  <- "/mnt/tier2/project/p201120/ryan/cCRE_pipeline/ArchR_Epithelial_Combined/PeakCalls/BED/"
-
-rds_files <- list.files(rds_dir, pattern = "\\.gr\\.rds$", full.names = TRUE)
-
-for (f in rds_files) {
-  gr <- readRDS(f)
-  sample_name <- gsub("-reproduciblePeaks\\.gr\\.rds$", "", basename(f))
-  export(gr, con = file.path(out_dir, paste0(sample_name, ".bed")), format = "BED")
-}
-
-
-#######################################
-# Generate sample BigWigs for cCRE pipeline
-#######################################
-
-getGroupBW(
-  ArchRProj = CombinedEpiProj,
-  groupBy = "Sample"
-
-)
-
-getOutputDirectory(ArchRProj = CombinedEpiProj)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
