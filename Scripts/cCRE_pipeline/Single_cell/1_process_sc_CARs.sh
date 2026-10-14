@@ -1,8 +1,12 @@
 #!/bin/bash
 
-ConsensusPeaks=/mnt/tier2/project/p201120/ryan/cCRE_pipeline/ArchR_Epithelial_Combined/PeakCalls/BED/consensus_peaks.bed
-signalDir=/mnt/tier2/project/p201120/ryan/cCRE_pipeline/ArchR_Epithelial_Combined/GroupBigWigs/Sample
-outdir=/mnt/tier2/project/p201120/ryan/cCRE_pipeline/outputs/colon-epithelial-rCARs/Processed-CARs
+# Set the base dir
+base_dir=. 
+
+# Set paths
+ConsensusPeaks=$base_dir/outputs/Peaks/consensus_peaks.bed
+signalDir=$base_dir/ArchR_Epithelial_Combined/GroupBigWigs/Sample
+outdir=$base_dir/outputs/colon-epithelial-rCARs/Processed-CARs
 
 # Make the out dir 
 mkdir -p "$outdir"
