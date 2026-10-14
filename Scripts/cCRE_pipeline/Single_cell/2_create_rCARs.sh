@@ -1,6 +1,10 @@
 #!/bin/bash
 
-dir=/project/home/p201120/ryan/cCRE_pipeline/outputs/colon-epithelial-rCARs
+# Set base dir
+base_dir=. 
+
+# Set paths
+dir=$base_dir/outputs/colon-epithelial-rCARs
 outdir=$dir/Filtered-CARs
 
 mkdir -p "$outdir"
