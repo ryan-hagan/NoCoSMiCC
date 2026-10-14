@@ -880,3 +880,12 @@ dir.create("outputs/Peaks", recursive = TRUE, showWarnings = FALSE)
 export(consensus_peaks, 
        con = file.path(base_dir, "outputs/Peaks/consensus_peaks.bed"),
        format = "BED")
+
+#######################################
+# Get BigWigs
+#######################################
+
+getGroupBW(
+  ArchRProj  = CombinedEpiProj,
+  groupBy    = "Sample"
+)
