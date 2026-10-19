@@ -1,11 +1,11 @@
 #!/bin/bash
 
 mode=$1
-files=/project/home/p201120/ryan/cCRE_pipeline/files/${mode}-List_colon.txt
-output=/project/home/p201120/ryan/cCRE_pipeline/outputs/sc-signal-output
-scriptDir=/project/home/p201120/ryan/cCRE_pipeline/scripts
-peaks=/project/home/p201120/ryan/cCRE_pipeline/outputs/colon-epithelial-rCARs/Filtered-CARs/scATAC-rCAR-labelled.bed
-bigwigDir=/project/home/p201120/ryan/cCRE_pipeline/files/Bigwigs
+files=/files/${mode}-List_colon.txt
+output=/outputs/sc-signal-output
+scriptDir=/Scripts
+peaks=/outputs/colon-epithelial-rCARs/Filtered-CARs/scATAC-rCAR-labelled.bed
+bigwigDir=/files/Bigwigs
 
 mkdir -p "$output"
 
