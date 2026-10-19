@@ -1,10 +1,10 @@
 #!/bin/bash
 # Step 6 - Classify cCREs
 
-dataDir=/project/home/p201120/ryan/cCRE_pipeline/outputs
-rcars=/project/home/p201120/ryan/cCRE_pipeline/outputs/colon-epithelial-rCARs/Filtered-CARs/scATAC-rCAR-labelled.bed
-scriptDir=/project/home/p201120/ryan/cCRE_pipeline/scripts
-filesDir=/project/home/p201120/ryan/cCRE_pipeline/files
+dataDir=/outputs
+rcars=/outputs/colon-epithelial-rCARs/Filtered-CARs/scATAC-rCAR-labelled.bed
+scriptDir=/Scripts
+filesDir=/files
 
 tss=$filesDir/hg38_tss.bed
 prox=$filesDir/hg38_tss_4k.bed
@@ -126,9 +126,7 @@ awk 'FNR==NR {x[$1];next} ($4 in x)' CTCFall l.bed | \
 awk 'FNR==NR {x[$1];next} !($4 in x)' CTCFall l.bed | \
     awk '{print $0}' >> m.bed
 
-sort -k1,1 -k2,2n m.bed > l.bed
-
-sort -k1,1 -k2,2n l.bed > $dataDir/colon-epithelial-cCREs.bed
+sort -k1,1 -k2,2n m.bed > $dataDir/colon-epithelial-cCREs.bed
 echo "Done."
 
 # ---- Summary ----
