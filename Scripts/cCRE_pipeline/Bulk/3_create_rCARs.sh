@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Define directories
-dir=/project/home/p201120/ryan/cCRE_pipeline/outputs/Bulk-colon-rCARs
-scriptDir=/project/home/p201120/ryan/cCRE_pipeline/scripts
+dir=/outputs/Bulk-colon-rCARs
+scriptDir=/Scripts
 
 cd $dir/Processed-CARs
 
