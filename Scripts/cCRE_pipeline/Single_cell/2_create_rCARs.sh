@@ -1,10 +1,7 @@
 #!/bin/bash
 
-# Set base dir
-base_dir=. 
-
 # Set paths
-dir=$base_dir/outputs/colon-epithelial-rCARs
+dir=/outputs/colon-epithelial-rCARs
 outdir=$dir/Filtered-CARs
 
 mkdir -p "$outdir"
