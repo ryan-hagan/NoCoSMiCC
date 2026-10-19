@@ -1,8 +1,8 @@
 #!/bin/bash
 
-scriptDir=/project/home/p201120/ryan/cCRE_pipeline/scripts
-signalDir=/project/home/p201120/ryan/cCRE_pipeline/outputs/sc-signal-output
-#outDir=/project/home/p201120/ryan/cCRE_pipeline/outputs
+scriptDir=/Scripts
+signalDir=/outputs/sc-signal-output
+#outDir=/outputs
 
 for mode in scATAC H3K4me3 H3K27ac CTCF; do
     echo "Determining maxZ for $mode..."
