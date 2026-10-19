@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Define directories
-scriptDir=/project/home/p201120/ryan/cCRE_pipeline/scripts
-dataDir=/project/home/p201120/ryan/cCRE_pipeline/outputs/Bulk-colon-rCARs
-peaks=/project/home/p201120/ryan/cCRE_pipeline/files/ENCODE-bulk-peaks.txt
-Bigwigs=/project/home/p201120/ryan/cCRE_pipeline/files/Bigwigs
+scriptDir=/Scripts
+dataDir=/outputs/Bulk-colon-rCARs
+peaks=/files/ENCODE-bulk-peaks.txt
+Bigwigs=/files/Bigwigs
 atac_signal="${Bigwigs}/BulkATAC/"
 dnase_signal="${Bigwigs}/DNase/"
 
