@@ -1,10 +1,9 @@
 #!/bin/bash
 
-dataDir=/project/home/p201120/ryan/cCRE_pipeline/outputs
-rdhs=/project/home/p201120/ryan/cCRE_pipeline/outputs/Bulk-colon-rCARs/Bulk-rCARs-labelled.bed
-scriptDir=/project/home/p201120/ryan/cCRE_pipeline/scripts
-filesDir=/project/home/p201120/ryan/cCRE_pipeline/files
-PYTHON=/mnt/tier2/project/p201120/ryan/envs/get/bin/python
+dataDir=/outputs
+rdhs=/outputs/Bulk-colon-rCARs/Bulk-rCARs-labelled.bed
+scriptDir=/Scripts
+filesDir=/files
 
 tss=$filesDir/hg38_tss.bed
 prox=$filesDir/hg38_tss_4k.bed
@@ -34,7 +33,7 @@ bedtools intersect -u -a a1 -b $prox | bedtools sort -g $chromSizes -i - > prox
 bedtools intersect -v -a bed -b $prox > distal
 
 bedtools closest -d -g $chromSizes -a prox -b tss_sorted.bed > tmp
-$PYTHON $scriptDir/calculate-center-distance.py tmp agnostic > new
+python $scriptDir/calculate-center-distance.py tmp agnostic > new
 awk '{if ($2 >= -200 && $2 <= 200) print $0}' new > center-distance
 awk '{if ($2 < -2000 || $2 > 2000) print $0}' new > far
 awk 'FNR==NR {x[$1];next} ($4 in x)' center-distance prox >> tss
