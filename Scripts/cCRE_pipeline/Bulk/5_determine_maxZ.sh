@@ -1,9 +1,9 @@
 #!/bin/bash
 
 mode=$1
-signalDir=/project/home/p201120/ryan/cCRE_pipeline/outputs/signal-output
-scriptDir=/project/home/p201120/ryan/cCRE_pipeline/scripts
-outDir=/project/home/p201120/ryan/cCRE_pipeline/outputs/maxZ
+signalDir=/outputs/signal-output
+scriptDir=/Scripts
+outDir=/outputs/maxZ
 
 cd "${signalDir}/${mode}/"
 
