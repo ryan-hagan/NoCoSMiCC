@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Define file with sample info
-peaks=/project/home/p201120/ryan/cCRE_pipeline/files/ENCODE-bulk-peaks.txt
+peaks=/files/ENCODE-bulk-peaks.txt
 
 # Set path
-dataDir=/project/home/p201120/ryan/cCRE_pipeline/outputs/Bulk-colon-rCARs
+dataDir=/outputs/Bulk-colon-rCARs
 cd $dataDir
 
 # Iterate over each line in the sample info file
