@@ -1,12 +1,9 @@
 #!/bin/bash
 
-# Set the base dir
-base_dir=. 
-
 # Set paths
-ConsensusPeaks=$base_dir/outputs/Peaks/consensus_peaks.bed
-signalDir=$base_dir/ArchR_Epithelial_Combined/GroupBigWigs/Sample
-outdir=$base_dir/outputs/colon-epithelial-rCARs/Processed-CARs
+ConsensusPeaks=/outputs/Peaks/consensus_peaks.bed
+signalDir=/ArchR_Epithelial_Combined/GroupBigWigs/Sample
+outdir=/outputs/colon-epithelial-rCARs/Processed-CARs
 
 # Make the out dir 
 mkdir -p "$outdir"
